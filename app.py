@@ -45,28 +45,26 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def speech_to_text(audio_bytes):
+    # 임시 WAV 파일로 저장
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
         temp_file.write(audio_bytes)
         temp_file_path = temp_file.name
 
     try:
+        # 음성을 텍스트로 변환
         r = sr.Recognizer()
         with sr.AudioFile(temp_file_path) as source:
-            # 배경 노이즈 감소 설정 추가
+            # 배경 노이즈 감소 설정
             r.dynamic_energy_threshold = True
             r.energy_threshold = 4000
             
-            # 오디오 녹음 감도 조정
             audio = r.record(source)
-            r.adjust_for_ambient_noise(source)
-            
-            # 음성을 텍스트로 변환
             text = r.recognize_google(audio, language='ko-KR')
             return text
     except sr.UnknownValueError:
         return "❌ 음성을 인식할 수 없습니다. 다시 녹음해주세요."
     except sr.RequestError:
-        return "❌ 음성 인식 서비스에 접근할 수 없습니다. 잠시 후 다시 시도해주세요."
+        return "❌ 음성 인식 서비스에 접근할 수 없습니다."
     except Exception as e:
         return f"❌ 오류 발생: {str(e)}"
     finally:
@@ -87,7 +85,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # 실시간 오디오 녹음
+        # 오디오 녹음기 추가
         audio_bytes = audio_recorder(
             text="",
             recording_color="#e87474",
@@ -101,9 +99,11 @@ def main():
             # 녹음된 오디오 재생
             st.audio(audio_bytes, format="audio/wav")
             
+            # 음성을 텍스트로 변환
             with st.spinner('텍스트 변환 중...'):
                 text = speech_to_text(audio_bytes)
             
+            # 결과 표시
             st.markdown("### 📝 변환된 텍스트:")
             st.info(text)
     
@@ -123,10 +123,12 @@ def main():
             # 업로드된 파일 재생
             st.audio(uploaded_file, format="audio/wav")
             
+            # 음성을 텍스트로 변환
             with st.spinner('텍스트 변환 중...'):
                 audio_bytes = uploaded_file.read()
                 text = speech_to_text(audio_bytes)
             
+            # 결과 표시
             st.markdown("### 📝 변환된 텍스트:")
             st.info(text)
 
