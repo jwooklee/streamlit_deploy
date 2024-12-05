@@ -1,4 +1,4 @@
 streamlit
-streamlit-webrtc==0.47.1
+streamlit-webrtc==0.44.0
 SpeechRecognition
 numpy
