@@ -1,3 +1,4 @@
 streamlit
-streamlit-audio-recorder
+audio-recorder-streamlit
 SpeechRecognition
+PyAudio
