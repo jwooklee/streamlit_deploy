@@ -29,9 +29,14 @@ def main():
         st.write("마이크 버튼을 클릭하여 음성을 녹음하세요.")
         webrtc_ctx = webrtc_streamer(
             key="speech-to-text",
-            mode=WebRtcMode.AUDIO_ONLY,
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": False, "audio": True},
+            mode="AUDIO_ONLY",
+            rtc_configuration={
+                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+            },
+            media_stream_constraints={
+                "video": False,
+                "audio": True
+            }
         )
         
         if st.button("음성 변환", disabled=not webrtc_ctx.state.playing):
