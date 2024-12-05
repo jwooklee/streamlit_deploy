@@ -1,0 +1,4 @@
+python3-dev
+portaudio19-dev
+ffmpeg
+libavdevice-dev 
