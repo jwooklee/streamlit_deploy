@@ -34,34 +34,38 @@ def get_audio_recorder_html():
                 const status = document.getElementById('recordingStatus');
                 
                 if (!isRecording) {
-                    // 녹음 시작
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
 
-                    mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob);
-                        reader.onloadend = function() {
-                            const base64data = reader.result.split(',')[1];
-                            window.parent.postMessage({
-                                type: "audio_data",
-                                data: base64data
-                            }, "*");
+                        mediaRecorder.ondataavailable = (event) => {
+                            audioChunks.push(event.data);
                         };
-                    };
 
-                    mediaRecorder.start();
-                    isRecording = true;
-                    button.textContent = "녹음 중지";
-                    status.textContent = "녹음 중...";
+                        mediaRecorder.onstop = async () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            const reader = new FileReader();
+                            reader.readAsDataURL(audioBlob);
+                            reader.onloadend = function() {
+                                const base64data = reader.result.split(',')[1];
+                                // Streamlit 컴포넌트 값 업데이트
+                                window.parent.postMessage({
+                                    type: 'streamlit:setComponentValue',
+                                    value: base64data
+                                }, '*');
+                            };
+                        };
+
+                        mediaRecorder.start();
+                        isRecording = true;
+                        button.textContent = "녹음 중지";
+                        status.textContent = "녹음 중...";
+                    } catch (err) {
+                        console.error("Error accessing microphone:", err);
+                        status.textContent = "마이크 접근 오류";
+                    }
                 } else {
-                    // 녹음 중지
                     mediaRecorder.stop();
                     isRecording = false;
                     button.textContent = "녹음 시작";
@@ -72,11 +76,11 @@ def get_audio_recorder_html():
     """
 
 def process_recorded_audio(base64_audio):
-    # base64 데이터를 WAV 파일로 저장
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    temp_file = f"temp_audio_{timestamp}.wav"
-    
     try:
+        # base64 데이터를 WAV 파일로 저장
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        temp_file = f"temp_audio_{timestamp}.wav"
+        
         audio_bytes = base64.b64decode(base64_audio)
         with open(temp_file, "wb") as f:
             f.write(audio_bytes)
@@ -84,6 +88,9 @@ def process_recorded_audio(base64_audio):
         # 음성을 텍스트로 변환
         text = speech_to_text(temp_file)
         return text
+    except Exception as e:
+        st.error(f"오디오 처리 중 오류 발생: {str(e)}")
+        return None
     finally:
         # 임시 파일 삭제
         if os.path.exists(temp_file):
@@ -93,23 +100,18 @@ def main():
     st.title("🎙️ 실시간 음성 녹음 및 텍스트 변환")
     st.write("버튼을 클릭하여 음성을 녹음하고 텍스트로 변환하세요.")
     
-    # 녹음된 오디오 데이터를 저장할 세션 상태
-    if 'audio_data' not in st.session_state:
-        st.session_state.audio_data = None
-    
     # 오디오 녹음기 컴포넌트 추가
-    html(get_audio_recorder_html(), height=200)
+    audio_data = html(get_audio_recorder_html(), height=200, key="audio_recorder")
     
-    # JavaScript로부터 받은 오디오 데이터 처리
-    if st.session_state.audio_data:
-        text = process_recorded_audio(st.session_state.audio_data)
-        st.write("## 변환된 텍스트:")
-        st.write(text)
-        st.session_state.audio_data = None
+    # 녹음된 오디오 데이터 처리
+    if audio_data is not None:
+        text = process_recorded_audio(audio_data)
+        if text:
+            st.write("## 변환된 텍스트:")
+            st.write(text)
     
-    # 파일 업로더도 유지
+    # 파일 업로더
     uploaded_file = st.file_uploader("또는 WAV 파일을 업로드하세요", type=['wav'])
-    
     if uploaded_file is not None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         temp_file = f"temp_audio_{timestamp}.wav"
@@ -123,32 +125,5 @@ def main():
         os.remove(temp_file)
 
 if __name__ == "__main__":
-    # JavaScript로부터 오디오 데이터를 받기 위한 콜백 설정
     st.set_page_config(page_title="음성 녹음 및 변환")
-    
-    # JavaScript message 처리를 위한 핸들러
-    if not hasattr(st, 'already_started_server'):
-        st.already_started_server = True
-        
-        def streamlit_message_handler():
-            import streamlit.components.v1 as components
-            
-            components.html(
-                """
-                <script>
-                    window.addEventListener('message', function(e) {
-                        if (e.data.type === 'audio_data') {
-                            window.parent.postMessage({
-                                type: 'streamlit:setComponentValue',
-                                value: e.data.data
-                            }, '*');
-                        }
-                    });
-                </script>
-                """,
-                height=0,
-            )
-        
-        streamlit_message_handler()
-    
     main()
