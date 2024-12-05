@@ -2,7 +2,7 @@ import streamlit as st
 import speech_recognition as sr
 import os
 from datetime import datetime
-from streamlit_webrtc import webrtc_streamer
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 import numpy as np
 import wave
 import tempfile
@@ -29,7 +29,7 @@ def main():
         st.write("마이크 버튼을 클릭하여 음성을 녹음하세요.")
         webrtc_ctx = webrtc_streamer(
             key="speech-to-text",
-            mode="AUDIO_ONLY",
+            mode=WebRtcMode.AUDIO_ONLY,
             rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={"video": False, "audio": True},
         )
